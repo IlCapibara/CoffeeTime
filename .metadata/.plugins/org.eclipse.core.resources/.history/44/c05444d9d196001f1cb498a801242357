@@ -1,0 +1,5 @@
+package com.gc.cleaner.service;
+
+public class RepositoryService {
+
+}

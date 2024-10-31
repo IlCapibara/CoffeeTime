@@ -1,0 +1,13 @@
+package com.gc.cleaner;
+import com.gc.cleaner.service.*;
+
+public class SeeYouTomorrowMain {
+	
+	RepositoryService rs;
+	
+    public static void main(String[] args) {
+        rs.
+        
+        
+    }
+}

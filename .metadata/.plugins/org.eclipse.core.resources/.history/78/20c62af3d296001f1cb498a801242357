@@ -1,0 +1,5 @@
+package com.gc.cleaner.model;
+
+public class PomInfo {
+
+}

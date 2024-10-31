@@ -1,0 +1,22 @@
+package com.gc.cleaner;
+
+import java.io.File;
+
+import com.gc.cleaner.model.PomInfo;
+import com.gc.cleaner.service.RepositoryService;
+import com.gc.cleaner.service.RepositoryServiceImpl;
+
+public class SeeYouTomorrowMain {
+	
+	static RepositoryService rs = new RepositoryServiceImpl();
+	
+    public static void main(String[] args) {
+    	
+    	rs.findAllPomFiles("C://rgi/projects/uma");
+    	
+    	for()
+        
+        System.out.println(pomInfo.toString());
+        
+    }
+}

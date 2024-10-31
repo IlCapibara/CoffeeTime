@@ -1,0 +1,36 @@
+package com.gc.cleaner.service;
+
+import com.gc.cleaner.model.PomInfo;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.File;
+
+public class RepositoryServiceImpl implements RepositoryService {
+
+	@Override
+    public PomInfo readPomFile(File pomFile) {
+        try {
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(pomFile);
+            doc.getDocumentElement().normalize();
+
+            String groupId = getTagValue("groupId", doc);
+            String artifactId = getTagValue("artifactId", doc);
+            String version = getTagValue("version", doc);
+
+            return new PomInfo(groupId, artifactId, version);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static String getTagValue(String tag, Document doc) {
+        Element element = (Element) doc.getElementsByTagName(tag).item(0);
+        return element != null ? element.getTextContent() : "";
+    }
+}

@@ -1,0 +1,8 @@
+package com.gc.cleaner;
+
+public class SeeYouTomorrowMain {
+    public static void main(String[] args) {
+        RepositoryService rs = new RepositoryService();
+        
+    }
+}

@@ -1,0 +1,11 @@
+package com.gc.cleaner.service;
+
+import java.io.File;
+
+import com.gc.cleaner.model.PomInfo;
+
+public interface RepositoryService {
+
+	PomInfo readPomFile(File pomFile);
+
+}

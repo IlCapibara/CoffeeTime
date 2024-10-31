@@ -1,0 +1,15 @@
+package com.gc.cleaner;
+import java.security.interfaces.RSAKey;
+
+import com.gc.cleaner.service.*;
+
+public class SeeYouTomorrowMain {
+	
+	static RepositoryService rs;
+	
+    public static void main(String[] args) {
+        rs.
+        
+        
+    }
+}

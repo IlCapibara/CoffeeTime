@@ -1,0 +1,16 @@
+package com.gc.cleaner;
+
+import com.gc.cleaner.service.RepositoryService;
+
+public class SeeYouTomorrowMain {
+	
+	static RepositoryService rs;
+	
+    public static void main(String[] args) {
+    	
+    	String testPom = "C:/rgi/projects/uma";
+        
+        rs.readPomFile(null);
+        
+    }
+}
