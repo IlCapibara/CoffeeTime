@@ -1,5 +1,4 @@
-com\gc\cleaner\model\ProjectVersions.class
-com\gc\cleaner\service\RepositoryServiceImpl.class
-com\gc\cleaner\SeeYouTomorrowMain.class
-com\gc\cleaner\service\RepositoryService.class
-com\gc\cleaner\model\PomInfo.class
+com\gc\coffeetime\CoffeeTimeMain.class
+com\gc\coffeetime\model\ProjectVersions.class
+com\gc\coffeetime\service\RepositoryServiceImpl.class
+com\gc\coffeetime\service\RepositoryService.class

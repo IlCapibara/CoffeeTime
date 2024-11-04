@@ -1,0 +1,102 @@
+package com.gc.coffeetime.service;
+
+public void updatePomFile(File pomFile, List<ProjectVersions> latestVersions) {
+	    try {
+	        // Carica il file pom.xml utilizzando Jsoup
+	        Document doc = Jsoup.parse(pomFile, "UTF-8", "", org.jsoup.parser.Parser.xmlParser());
+
+	        // Trova tutti i nodi <dependency>
+	        for (Element dependency : doc.select("dependency")) {
+	            String groupId = dependency.selectFirst("groupId").text();
+	            String artifactId = dependency.selectFirst("artifactId").text();
+	            Element versionElement = dependency.selectFirst("version");
+
+	            if (versionElement != null) {
+	                String currentVersion = versionElement.text();
+	                
+	                // Ottieni la versione più recente per il groupId e artifactId corrente
+	                String latestVersion = getLatestVersion(groupId, artifactId, latestVersions);
+
+	                if (latestVersion != null && !latestVersion.equals(currentVersion)) {
+	                    if (currentVersion.startsWith("${") && currentVersion.endsWith("}")) {
+	                        // Caso in cui la versione è centralizzata in <properties>
+	                        String propertyName = currentVersion.substring(2, currentVersion.length() - 1);
+	                        updatePropertyVersion(doc, propertyName, latestVersion);
+	                    } else {
+	                        // Aggiorna la versione direttamente
+	                        versionElement.text(latestVersion);
+	                        System.out.println("Updated " + groupId + ":" + artifactId + " from version " + currentVersion + " to " + latestVersion);
+	                    }
+	                }
+	            }
+	        }
+
+	        // Salva le modifiche nel file pom.xml
+	        saveDocumentToFile(doc, pomFile);
+
+	    } catch (Exception e) {
+	        System.err.println("Error processing file: " + pomFile.getAbsolutePath());
+	        e.printStackTrace();
+	    }
+	}
+
+
+
+
+
+	private String getLatestVersion(String groupId, String artifactId, List<ProjectVersions> latestVersions) {
+		for (ProjectVersions version : latestVersions) {
+			if (version.getGroupId().equals(groupId) && version.getArtifactId().equals(artifactId)) {
+				return version.getVersion();
+			}
+		}
+		return null;
+	}
+
+	private void saveDocumentToFile(Document doc, File file) {
+		try {
+			TransformerFactory transformerFactory = TransformerFactory.newInstance();
+			Transformer transformer = transformerFactory.newTransformer();
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(file);
+			transformer.transform(source, result);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void updateAllPomFiles(String startDir) {
+		// Find each file pom.xml in starting directory
+		List<File> pomFiles = findAllPomFiles(startDir);
+
+		// Get local versions for the existing dependencies
+		List<ProjectVersions> latestVersions = getLocalVersions(pomFiles);
+
+		// Update each file pom.xml with most recent local versions
+		for (File pomFile : pomFiles) {
+			System.out.println("Updating " + pomFile.getAbsolutePath());
+			updatePomFile(pomFile, latestVersions);
+		}
+
+		System.out.println("All pom.xml files have been updated. ");
+	}
+
+	private void updatePropertyVersion(Document doc, String propertyName, String newVersion) {
+		NodeList propertiesNodes = doc.getElementsByTagName("properties");
+
+		// Ensure <properties> exists
+		if (propertiesNodes.getLength() > 0) {
+			Element propertiesElement = (Element) propertiesNodes.item(0);
+			NodeList propertyNodeList = propertiesElement.getElementsByTagName(propertyName);
+
+			if (propertyNodeList.getLength() > 0) {
+				Node propertyNode = propertyNodeList.item(0);
+				System.out.println("Updating property " + propertyName + " to version " + newVersion);
+				propertyNode.setTextContent(newVersion);
+			} else {
+				System.out.println("Property " + propertyName + " not found in <properties>.");
+			}
+		}
+	}
+}

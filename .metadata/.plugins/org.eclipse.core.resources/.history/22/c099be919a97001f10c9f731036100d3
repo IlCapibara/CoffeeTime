@@ -1,0 +1,51 @@
+public void updatePomFile(File pomFile, List<ProjectVersions> latestVersions) {
+    try {
+        Document doc = Jsoup.parse(pomFile, "UTF-8", "", org.jsoup.parser.Parser.xmlParser());
+
+        // Ignora il nodo <parent> e seleziona solo le dipendenze locali
+        Element parentNode = doc.selectFirst("parent");
+        if (parentNode != null) {
+            System.out.println("Ignoring <parent> node for file: " + pomFile.getAbsolutePath());
+        }
+
+        // Seleziona solo i nodi <dependency> all'interno di <dependencies> escludendo <parent>
+        for (Element dependency : doc.select("dependencies > dependency")) {
+            String groupId = dependency.selectFirst("groupId").text();
+            String artifactId = dependency.selectFirst("artifactId").text();
+            Element versionElement = dependency.selectFirst("version");
+
+            if (versionElement != null) {
+                String currentVersion = versionElement.text();
+
+                // Verifica se è una proprietà del tipo ${property.version}
+                if (currentVersion.startsWith("${") && currentVersion.endsWith("}")) {
+                    String propertyName = currentVersion.substring(2, currentVersion.length() - 1);
+                    System.out.println("Dependency uses a property: " + propertyName);
+
+                    // Aggiorna solo se la proprietà è definita nel pom corrente e non nel parent
+                    if (isLocalProperty(doc, propertyName)) {
+                        String latestVersion = getLatestVersion(groupId, artifactId, latestVersions);
+                        if (latestVersion != null) {
+                            updatePropertyVersion(doc, propertyName, latestVersion);
+                        }
+                    }
+                } else {
+                    // Aggiorna solo se la versione non è legata a un parent
+                    String latestVersion = getLatestVersion(groupId, artifactId, latestVersions);
+                    if (latestVersion != null && !latestVersion.equals(currentVersion)) {
+                        versionElement.text(latestVersion);
+                        System.out.println("Updated " + groupId + ":" + artifactId + " from version " + currentVersion + " to " + latestVersion);
+                    }
+                }
+            } else {
+                System.out.println("Version tag not found for dependency: " + groupId + ":" + artifactId);
+            }
+        }
+
+        saveDocumentToFile(doc, pomFile);
+
+    } catch (Exception e) {
+        System.err.println("Error processing file: " + pomFile.getAbsolutePath());
+        e.printStackTrace();
+    }
+}

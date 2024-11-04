@@ -1,5 +1,0 @@
-package com.gc.cleaner.service;
-
-public class RepositoryServiceImpl implements RepositoryService {
-
-}

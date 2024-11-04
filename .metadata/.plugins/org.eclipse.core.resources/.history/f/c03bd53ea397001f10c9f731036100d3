@@ -1,0 +1,257 @@
+package com.gc.coffeetime.service;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import com.gc.coffeetime.model.ProjectVersions;
+import com.github.lalyos.jfiglet.FigletFont;
+
+public class RepositoryServiceImpl implements RepositoryService {
+
+	// Constructor
+	public RepositoryServiceImpl() {
+		printBanner();
+	}
+
+	// Prints a banner to the console
+	@Override
+	public void printBanner() {
+		try {
+			String asciiArt = FigletFont.convertOneLine("CoffeeTime");
+			System.out.println(asciiArt);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		System.out.println("==========================================================");
+		System.out.println("This program scans all pom.xml files in the selected      ");
+		System.out.println("folder, finds the latest local versions for dependencies, ");
+		System.out.println("and updates the pom.xml files accordingly.                ");
+		System.out.println("==========================================================\n");
+	}
+
+	// Finds all pom.xml files in the specified directory
+	@Override
+	public List<File> findAllPomFiles(String startDir) {
+		List<File> pomFiles = new ArrayList<>();
+		try (Stream<Path> paths = Files.walk(Paths.get(startDir), FileVisitOption.FOLLOW_LINKS)) {
+			pomFiles = paths
+					.filter(Files::isRegularFile)
+					.filter(path -> !path.toString().contains(File.separator + "target" + File.separator))
+					.filter(path -> path.getFileName().toString().equals("pom.xml"))
+					.map(Path::toFile)
+					.collect(Collectors.toList());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return pomFiles;
+	}
+
+	// Reads all pom.xml files and retrieves their groupId, artifactId, and version
+	public List<ProjectVersions> getLocalVersions(List<File> pomFiles) {
+		List<ProjectVersions> pomListWithVersion = new ArrayList<>();
+		for (File pomFile : pomFiles) {
+			ProjectVersions info = readPomFile(pomFile);
+			if (info != null) {
+				pomListWithVersion.add(info);
+			}
+		}
+		return pomListWithVersion;
+	}
+
+	// Parses a pom.xml file to retrieve groupId, artifactId, and version
+	@Override
+	public ProjectVersions readPomFile(File pomFile) {
+	    try {
+	        Document doc = Jsoup.parse(pomFile, "UTF-8", "", org.jsoup.parser.Parser.xmlParser());
+
+	        // Remove <parent> block to prevent unwanted inheritance
+	        Element parentElement = doc.selectFirst("parent");
+	        if (parentElement != null) {
+	            parentElement.remove();
+	        }
+
+	        String groupId = doc.selectFirst("groupId").text();
+	        String artifactId = doc.selectFirst("artifactId").text();
+	        
+	        // Try to get version from the main declaration only (not dependencies/plugins)
+	        Element versionElement = doc.selectFirst("> version");
+	        String version = null;
+
+	        if (versionElement != null) {
+	            version = resolveVersion(versionElement.text(), doc);
+	        } else {
+	            // If no direct version found, check in parent element
+	            Element parentVersionElement = doc.selectFirst("parent > version");
+	            if (parentVersionElement != null) {
+	                version = resolveVersion(parentVersionElement.text(), doc);
+	            }
+	        }
+
+	        System.out.println("Parsed values - GroupId: " + groupId + ", ArtifactId: " + artifactId + ", Version: " + version);
+
+	        return new ProjectVersions(groupId, artifactId, version);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return null;
+	    }
+	}
+
+	// Helper method to resolve version properties (e.g., ${project.version})
+	private String resolveVersion(String version, Document doc) {
+	    if (version.startsWith("${") && version.endsWith("}")) {
+	        String propertyName = version.substring(2, version.length() - 1);
+	        Element propertyElement = doc.selectFirst("properties > " + propertyName);
+	        if (propertyElement != null) {
+	            return propertyElement.text();
+	        } else {
+	            System.out.println("Warning: Property " + propertyName + " not found in <properties>.");
+	            return null;
+	        }
+	    }
+	    return version;
+	}
+
+
+	// Metodo helper per verificare se l'elemento è all'interno di un <dependency>
+	private boolean isInsideDependency(Element element) {
+	    Element parent = element.parent();
+	    while (parent != null) {
+	        if ("dependency".equals(parent.tagName())) {
+	            return true;
+	        }
+	        parent = parent.parent();
+	    }
+	    return false;
+	}
+
+
+
+	// Updates dependencies in the pom.xml with the latest versions
+	public void updatePomFile(File pomFile, List<ProjectVersions> latestVersions) {
+		try {
+			Document doc = Jsoup.parse(pomFile, "UTF-8", "", org.jsoup.parser.Parser.xmlParser());
+
+			// Retrieve the parent's version if present
+			Element parentElement = doc.selectFirst("parent > version");
+			String parentVersion = parentElement != null ? parentElement.text() : null;
+
+			for (Element dependency : doc.select("dependencies > dependency")) {
+				String groupId = dependency.selectFirst("groupId").text();
+				String artifactId = dependency.selectFirst("artifactId").text();
+				Element versionElement = dependency.selectFirst("version");
+
+				// Case 1: Dependency inherits version from the parent, and parent version is defined
+				if (versionElement == null && parentVersion != null) {
+					// Check if there is an updated version in the latest versions list
+					String latestVersion = getLatestVersion(groupId, artifactId, latestVersions);
+					if (latestVersion != null && !latestVersion.equals(parentVersion)) {
+						// If an update is needed, add a version tag with the latest version
+						versionElement = new Element("version").text(latestVersion);
+						dependency.appendChild(versionElement);
+						System.out.println("Updated inherited version of " + groupId + ":" + artifactId + " to " + latestVersion);
+					} else {
+						System.out.println("Dependency " + groupId + ":" + artifactId + " inherits parent version (" + parentVersion + "), no update needed.");
+					}
+					continue;
+				}
+
+				// Case 2: Dependency has a version defined, check if it's a property or a hardcoded value
+				if (versionElement != null) {
+					String currentVersion = versionElement.text();
+
+					// Check if the version is a property reference like ${property.version}
+					if (currentVersion.startsWith("${") && currentVersion.endsWith("}")) {
+						String propertyName = currentVersion.substring(2, currentVersion.length() - 1);
+						if (!isLocalProperty(doc, propertyName)) {
+							System.out.println("Dependency " + groupId + ":" + artifactId + " uses inherited property (" + propertyName + "), skipping update.");
+							continue;
+						}
+					}
+
+					// Update only if there's a newer version available and it differs from the current one
+					String latestVersion = getLatestVersion(groupId, artifactId, latestVersions);
+					if (latestVersion != null && !latestVersion.equals(currentVersion)) {
+						versionElement.text(latestVersion);
+						System.out.println("Updated " + groupId + ":" + artifactId + " from version " + currentVersion + " to " + latestVersion);
+					}
+				}
+			}
+
+			saveDocumentToFile(doc, pomFile);
+
+		} catch (Exception e) {
+			System.err.println("Error processing file: " + pomFile.getAbsolutePath());
+			e.printStackTrace();
+		}
+	}
+
+
+	// Checks if a property is defined locally within the current pom file
+	private boolean isLocalProperty(Document doc, String propertyName) {
+		Element propertiesElement = doc.selectFirst("properties");
+		return propertiesElement != null && propertiesElement.selectFirst(propertyName) != null;
+	}
+
+	// Retrieves the latest version for a given groupId and artifactId from the list of local versions
+	private String getLatestVersion(String groupId, String artifactId, List<ProjectVersions> latestVersions) {
+		for (ProjectVersions version : latestVersions) {
+			if (version.getGroupId().equals(groupId) && version.getArtifactId().equals(artifactId)) {
+				return version.getVersion();
+			}
+		}
+		return null;
+	}
+
+	// Saves the modified Document (pom.xml) to the specified file path
+	private void saveDocumentToFile(Document doc, File file) {
+		try {
+			Files.write(file.toPath(), doc.outerHtml().getBytes(StandardCharsets.UTF_8));
+			System.out.println("File saved successfully: " + file.getAbsolutePath());
+		} catch (IOException e) {
+			System.err.println("Error saving file: " + file.getAbsolutePath());
+			e.printStackTrace();
+		}
+	}
+
+	// Main method to update all pom.xml files in the specified directory
+	public void updateAllPomFiles(String startDir) {
+		List<File> pomFiles = findAllPomFiles(startDir);
+		List<ProjectVersions> latestVersions = getLocalVersions(pomFiles);
+
+		for (File pomFile : pomFiles) {
+			System.out.println("Updating " + pomFile.getAbsolutePath());
+			updatePomFile(pomFile, latestVersions);
+		}
+
+		System.out.println("All pom.xml files have been updated.");
+	}
+
+	// Updates a specific property version in the <properties> section
+	private void updatePropertyVersion(Document doc, String propertyName, String newVersion) {
+		Element propertiesElement = doc.selectFirst("properties");
+
+		if (propertiesElement != null) {
+			Element property = propertiesElement.selectFirst(propertyName);
+			if (property != null) {
+				System.out.println("Updating property " + propertyName + " to version " + newVersion);
+				property.text(newVersion);
+			} else {
+				System.out.println("Property " + propertyName + " not found in <properties>.");
+			}
+		}
+	}
+}

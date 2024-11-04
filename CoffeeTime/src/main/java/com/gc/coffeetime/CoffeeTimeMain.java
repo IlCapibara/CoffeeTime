@@ -1,9 +1,5 @@
 package com.gc.coffeetime;
 
-import java.io.File;
-import java.util.List;
-
-import com.gc.coffeetime.model.PomInfo;
 import com.gc.coffeetime.service.RepositoryService;
 import com.gc.coffeetime.service.RepositoryServiceImpl;
 
@@ -13,12 +9,9 @@ public class CoffeeTimeMain {
 	
     public static void main(String[] args) {
     	
-    	List<File> pomFiles = rs.findAllPomFiles("C://rgi/projects/uma");
-    	PomInfo pomInfo;
+    	rs.printBanner();    	
+    	//We can take a coffee now
+    	rs.updateAllPomFiles("C:/Users/gianluigi.colameo/OneDrive - RGI SpA/Desktop/prove");
     	
-		for(File pomFile : pomFiles) {
-    		pomInfo = rs.readPomFile(pomFile);
-    		System.out.println(pomInfo.toString());
-    	}        
     }
 }

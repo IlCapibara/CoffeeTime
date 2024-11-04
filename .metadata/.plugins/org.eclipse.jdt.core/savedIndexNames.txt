@@ -1,14 +1,10 @@
 INDEX VERSION 1.131+C:\Users\gianluigi.colameo\CoffeeTime\.metadata\.plugins\org.eclipse.jdt.core
-1097940993.index
-356374187.index
-1954219919.index
-2352655881.index
-2738758566.index
-2823701031.index
-2248439119.index
-751571265.index
-3625505286.index
-3999336693.index
+1816053315.index
 3896485190.index
+2248439119.index
+356374187.index
+2352655881.index
+4137636489.index
+2693543426.index
 3336697774.index
-1276773292.index
+1954219919.index

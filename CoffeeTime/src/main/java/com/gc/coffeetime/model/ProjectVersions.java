@@ -1,35 +1,43 @@
 package com.gc.coffeetime.model;
 
-import java.util.List;
-
 public class ProjectVersions {
-    private String projectName;
-    private List<String> versions;
+    private String groupId;
+    private String artifactId;
+    private String version;
 
-    public ProjectVersions(String projectName, List<String> versions) {
-        this.projectName = projectName;
-        this.versions = versions;
+    public ProjectVersions(String groupId, String artifactId, String version) {
+        this.groupId = groupId;
+        this.artifactId = artifactId;
+        this.version = version;
     }
 
     // Getters and Setters
-    public String getProjectName() {
-        return projectName;
+    public String getGroupId() {
+        return groupId;
     }
 
-    public void setProjectName(String projectName) {
-        this.projectName = projectName;
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
     }
 
-    public List<String> getVersions() {
-        return versions;
+    public String getArtifactId() {
+        return artifactId;
     }
 
-    public void setVersions(List<String> versions) {
-        this.versions = versions;
+    public void setArtifactId(String artifactId) {
+        this.artifactId = artifactId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 
     @Override
     public String toString() {
-        return "Project: " + projectName + ", Versions: " + versions;
+        return groupId + ":" + artifactId + ":" + version;
     }
 }
